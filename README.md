@@ -3,7 +3,8 @@
 ## Função
 
 ### Descrição
-Aplicação simples para criar listas de produtos visando custo beneficio através de busca
+Aplicação simples para criar listas de produtos visando custo beneficio através de busca através da plataforma ZOOM
+
 ### Funcionalidades
 Inserir nome do produto
 
