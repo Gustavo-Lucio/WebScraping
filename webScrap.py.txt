@@ -1,6 +1,8 @@
 from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 
 busca = input("O que procura: ")
@@ -12,155 +14,90 @@ lista_relevantes = []
 lista_menor_preco = []
 lista_melhor_avaliado = []
 
-elementosPag1 = driver.find_element(By.CLASS_NAME, "Hits_Wrapper__iA3rM")
-produtosPag1 = elementosPag1.find_elements(By.XPATH, ".//a[@class='ProductCard_ProductCard_Inner__gapsh']")
+def coletar_produtos():
+    elementos = driver.find_element(By.CLASS_NAME, "Hits_Wrapper__iA3rM")
+    produtos = elementos.find_elements(By.XPATH, ".//a[@class='ProductCard_ProductCard_Inner__gapsh']")
+    return produtos
 
-for produto1 in produtosPag1:
-    produto1_h2 = produto1.find_element(By.XPATH, ".//h2[@class='Text_Text_ARJdp Text_MobileLabelXsdHwGG Text_DesktopLabelSAtLargewWsED ProductCard_ProductCard_Name_U_mUQ']")
+def extrair_info(produtos):
+    lista = []
+    for produto in produtos:
+        produto_h2 = produto.find_element(By.XPATH, ".//h2[contains(@class,'ProductCard_ProductCard_Name')]")
+        produto_nome = produto_h2.text
+        produto_link = produto.get_attribute("href")
+        lista.append([produto_nome, produto_link])
+    return lista
 
-    produto1_nome = produto1_h2.text
-    produto1_link = produto1.get_attribute("href")
+# Coletar dados da primeira página
+produtosPag1 = coletar_produtos()
+lista_relevantes.extend(extrair_info(produtosPag1))
 
-    lista_relevantes.append([produto1_nome, produto1_link])
+# Navegar pelas páginas e coletar dados
+for pagina in range(2, 4):  # Páginas 2 e 3
+    try:
+        clickPag = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, f"//a[@aria-label='Página {pagina}']"))
+        )
+        driver.execute_script("arguments[0].click();", clickPag)
+        sleep(3)
 
-sleep(3)
+        produtos = coletar_produtos()
+        lista_relevantes.extend(extrair_info(produtos))
 
-clickPag2 = driver.find_element(By.XPATH, "//a[@aria-label='Página 2']")
-driver.execute_script("arguments[0].click();", clickPag2)
+    except Exception as e:
+        print(f"Erro ao coletar produtos na página {pagina}: {str(e)}")
 
-sleep(3)
-#
-elementosPag2 = driver.find_element(By.CLASS_NAME, "Hits_Wrapper__iA3rM")
-produtosPag2 = elementosPag2.find_elements(By.XPATH, ".//a[@class='ProductCard_ProductCard_Inner__gapsh']")
-
-for produto2 in produtosPag2:
-    produto2_h2 = produto2.find_element(By.XPATH, ".//h2[@class='Text_Text_ARJdp Text_MobileLabelXsdHwGG Text_DesktopLabelSAtLargewWsED ProductCard_ProductCard_Name_U_mUQ']")
-
-    produto2_nome = produto2_h2.text
-    produto2_link = produto2.get_attribute("href")
-
-    lista_relevantes.append([produto2_nome, produto2_link])
-
-sleep(3)
-
-clickPag3 = driver.find_element(By.XPATH, "//a[@aria-label='Página 3']")
-driver.execute_script("arguments[0].click();", clickPag3)
-
-elementosPag3 = driver.find_element(By.CLASS_NAME, "Hits_Wrapper__iA3rM")
-produtosPag3 = elementosPag3.find_elements(By.XPATH, ".//a[@class='ProductCard_ProductCard_Inner__gapsh']")
-
-for produto in produtosPag3:
-    produto_h2 = produto.find_element(By.XPATH, ".//h2[@class='Text_Text_ARJdp Text_MobileLabelXsdHwGG Text_DesktopLabelSAtLargewWsED ProductCard_ProductCard_Name_U_mUQ']")
-
-    produto_nome = produto_h2.text
-    produto_link = produto.get_attribute("href")
-
-    lista_relevantes.append([produto_nome, produto_link])
-
-sleep(5)
-
+# Coletar produtos com menor preço
+select = WebDriverWait(driver, 10).until(
+    EC.element_to_be_clickable((By.CLASS_NAME, "Select_Select__1HNob"))
+)
+# Re-fetch the select element after any potential DOM changes
 select = driver.find_element(By.CLASS_NAME, "Select_Select__1HNob")
-select_menor_preco = select.find_element(By.XPATH, ".//option[@value='price_asc']")
-select_menor_preco.click()
-
-elementosPag1_MP = driver.find_element(By.CLASS_NAME, "Hits_Wrapper__iA3rM")
-produtosPag1_MP = elementosPag1_MP.find_elements(By.XPATH, ".//a[@class='ProductCard_ProductCard_Inner__gapsh']")
-
-for produto1_MP in produtosPag1_MP:
-    produto1_h2_MP = produto1_MP.find_element(By.XPATH, ".//h2[@class='Text_Text_ARJdp Text_MobileLabelXsdHwGG Text_DesktopLabelSAtLargewWsED ProductCard_ProductCard_Name_U_mUQ']")
-
-    produto1_nome_MP = produto1_h2_MP.text
-    produto1_link_MP = produto1_MP.get_attribute("href")
-
-    lista_menor_preco.append([produto1_nome_MP, produto1_link_MP])
-
+select.find_element(By.XPATH, ".//option[@value='price_asc']").click()
 sleep(3)
 
-clickPag2_MP = driver.find_element(By.XPATH, ".//a[@aria-label='Página 2']")
+produtosPag1_MP = coletar_produtos()
+lista_menor_preco.extend(extrair_info(produtosPag1_MP))
 
-clickPag2_MP = driver.find_element(By.XPATH, "//a[@aria-label='Página 2']")
-driver.execute_script("arguments[0].click();", clickPag2_MP)
+# Repetir para as páginas de menor preço
+for pagina in range(2, 4):
+    try:
+        clickPag = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, f"//a[@aria-label='Página {pagina}']"))
+        )
+        driver.execute_script("arguments[0].click();", clickPag)
+        sleep(3)
 
-sleep(3)
-#
-elementosPag2_MP = driver.find_element(By.CLASS_NAME, "Hits_Wrapper__iA3rM")
-produtosPag2_MP = elementosPag2_MP.find_elements(By.XPATH, ".//a[@class='ProductCard_ProductCard_Inner__gapsh']")
+        produtos = coletar_produtos()
+        lista_menor_preco.extend(extrair_info(produtos))
 
-for produto2_MP in produtosPag2_MP:
-    produto2_h2_MP = produto2_MP.find_element(By.XPATH, ".//h2[@class='Text_Text_ARJdp Text_MobileLabelXsdHwGG Text_DesktopLabelSAtLargewWsED ProductCard_ProductCard_Name_U_mUQ']")
+    except Exception as e:
+        print(f"Erro ao coletar produtos na página {pagina} de menor preço: {str(e)}")
 
-    produto2_nome_MP = produto2_h2_MP.text
-    produto2_link_MP = produto2_MP.get_attribute("href")
-
-    lista_menor_preco.append([produto2_nome_MP, produto2_link_MP])
-
-sleep(3)
-
-clickPag3_MP = driver.find_element(By.XPATH, "//a[@aria-label='Página 3']")
-driver.execute_script("arguments[0].click();", clickPag3_MP)
-
-elementosPag3_MP = driver.find_element(By.CLASS_NAME, "Hits_Wrapper__iA3rM")
-produtosPag3_MP = elementosPag3_MP.find_elements(By.XPATH, ".//a[@class='ProductCard_ProductCard_Inner__gapsh']")
-
-for produto_MP in produtosPag3_MP:
-    produto_h2_MP = produto_MP.find_element(By.XPATH, ".//h2[@class='Text_Text_ARJdp Text_MobileLabelXsdHwGG Text_DesktopLabelSAtLargewWsED ProductCard_ProductCard_Name_U_mUQ']")
-
-    produto_nome_MP = produto_h2_MP.text
-    produto_link_MP = produto_MP.get_attribute("href")
-
-    lista_menor_preco.append([produto_nome_MP, produto_link_MP])
-
-select = driver.find_element(By.CLASS_NAME, "Select_Select__1HNob")
-select_melhor_avalado = select.find_element(By.XPATH, ".//option[@value='rating_desc']")
-select_melhor_avalado.click()
-
+# Coletar produtos melhor avaliados
+select = driver.find_element(By.CLASS_NAME, "Select_Select__1HNob")  # Re-fetch the select element
+select.find_element(By.XPATH, ".//option[@value='rating_desc']").click()
 sleep(3)
 
-elementosPag1_MA = driver.find_element(By.CLASS_NAME, "Hits_Wrapper__iA3rM")
-produtosPag1_MA = elementosPag1_MA.find_elements(By.XPATH, ".//a[@class='ProductCard_ProductCard_Inner__gapsh']")
+produtosPag1_MA = coletar_produtos()
+lista_melhor_avaliado.extend(extrair_info(produtosPag1_MA))
 
-for produto1_MA in produtosPag1_MA:
-    produto1_h2_MA = produto1_MA.find_element(By.XPATH, ".//h2[@class='Text_Text_ARJdp Text_MobileLabelXsdHwGG Text_DesktopLabelSAtLargewWsED ProductCard_ProductCard_Name_U_mUQ']")
+# Repetir para as páginas de melhor avaliados
+for pagina in range(2, 4):
+    try:
+        clickPag = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, f"//a[@aria-label='Página {pagina}']"))
+        )
+        driver.execute_script("arguments[0].click();", clickPag)
+        sleep(3)
 
-    produto1_nome_MA = produto1_h2_MA.text
-    produto1_link_MA = produto1_MA.get_attribute("href")
+        produtos = coletar_produtos()
+        lista_melhor_avaliado.extend(extrair_info(produtos))
 
-    lista_melhor_avaliado.append([produto1_nome_MA, produto1_link_MA])
+    except Exception as e:
+        print(f"Erro ao coletar produtos na página {pagina} de melhor avaliados: {str(e)}")
 
-sleep(3)
-
-clickPag2_MA = driver.find_element(By.XPATH, "//a[@aria-label='Página 2']")
-driver.execute_script("arguments[0].click();", clickPag2_MA)
-
-sleep(3)
-
-elementosPag2_MA = driver.find_element(By.CLASS_NAME, "Hits_Wrapper__iA3rM")
-produtosPag2_MA = elementosPag2_MA.find_elements(By.XPATH, ".//a[@class='ProductCard_ProductCard_Inner__gapsh']")
-
-for produto2_MA in produtosPag2_MA:
-    produto2_h2_MA = produto2_MA.find_element(By.XPATH, ".//h2[@class='Text_Text_ARJdp Text_MobileLabelXsdHwGG Text_DesktopLabelSAtLargewWsED ProductCard_ProductCard_Name_U_mUQ']")
-
-    produto2_nome_MA = produto2_h2_MA.text
-    produto2_link_MA = produto2_MA.get_attribute("href")
-
-    lista_melhor_avaliado.append([produto2_nome_MA, produto2_link_MA])
-
-sleep(3)
-
-clickPag3_MP = driver.find_element(By.XPATH, "//a[@aria-label='Página 3']")
-driver.execute_script("arguments[0].click();", clickPag3_MP)
-
-elementosPag3_MA = driver.find_element(By.CLASS_NAME, "Hits_Wrapper__iA3rM")
-produtosPag3_MA = elementosPag3_MA.find_elements(By.XPATH, ".//a[@class='ProductCard_ProductCard_Inner__gapsh']")
-
-for produto_MA in produtosPag3_MA:
-    produto_h2_MA = produto_MA.find_element(By.XPATH, ".//h2[@class='Text_Text_ARJdp Text_MobileLabelXsdHwGG Text_DesktopLabelSAtLargewWsED ProductCard_ProductCard_Name_U_mUQ']")
-
-    produto_nome_MA = produto_h2_MA.text
-    produto_link_MA = produto_MA.get_attribute("href")
-
-    lista_melhor_avaliado.append([produto_nome_MA, produto_link_MA])
-
+# Salvar os dados em CSV
 df1 = pd.DataFrame(lista_relevantes, columns=['Produto', 'Link'])
 df1.to_csv("produtos_relevantes.csv", index=False)
 
@@ -170,8 +107,10 @@ df2.to_csv("lista_menor_preco.csv", index=False)
 df3 = pd.DataFrame(lista_melhor_avaliado, columns=['Produto', 'Link'])
 df3.to_csv("lista_melhor_avaliado.csv", index=False)
 
-df_merged = df1.merge(df2, on='Link').merge(df3, on='Link')
-df_merged.to_csv("CustoBeneficio.csv.csv", index=False)
+# Merge e salvar o custo-benefício
+df_merged = df1.merge(df2, on='Link', how='outer').merge(df3, on='Link', how='outer')
+df_merged.to_csv("CustoBeneficio.csv", index=False)
 
+print("Scraping finalizado e dados salvos.")
 sleep(3)
 driver.quit()
